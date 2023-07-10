@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-sdk
+        android:minSdkVersion="21"
+        android:targetSdkVersion="30" />
+
+    <!-- For loading images from gallery -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- For using the camera -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" />
+    <!-- For logging solution events -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application>
+
+        <activity
+            android:name="com.google.mediapipe.examples.facedetecation.MainActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name="com.google.mediapipe.examples.facemesh.MainActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name="com.google.mediapipe.examples.hands.MainActivity"
+            android:screenOrientation="portrait" />
+
+    </application>
+
+</manifest>
