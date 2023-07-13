@@ -15,3 +15,5 @@ dependencyResolutionManagement {
 rootProject.name = "MediaPipeDemo"
 include ':app'
 include ':solutions'
+include ':selfiesegmentation'
+include ':mediapipeaar'
