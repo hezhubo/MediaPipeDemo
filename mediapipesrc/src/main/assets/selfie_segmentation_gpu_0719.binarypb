@@ -1,0 +1,10 @@
+
+`FlowLimiterCalculatorinput_videoFINISHED:output_video"throttled_input_videoj
+FINISHED
+DImageFrameToGpuBufferCalculatorbackground_video"gpubuffer_video
+aPacketClonerCalculatorTICK:throttled_input_videogpubuffer_video"throttled_background_video
+¶ImageTransformationCalculator$IMAGE_GPU:throttled_background_video"!IMAGE_GPU:scaled_background_videoBL
+Btype.googleapis.com/mediapipe.ImageTransformationCalculatorOptions€
+Ð
+YSelfieSegmentationGpuIMAGE:throttled_input_video"#SEGMENTATION_MASK:segmentation_mask
+„MaskOverlayCalculatorVIDEO:0:scaled_background_videoVIDEO:1:throttled_input_videoMASK:segmentation_mask"OUTPUT:output_videoRinput_videoRbackground_videozoutput_video

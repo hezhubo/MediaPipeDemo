@@ -1,12 +1,17 @@
 package com.hezb.mediapipe.selfiesegmentation
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.SurfaceTexture
 import android.os.Bundle
+import android.util.Log
 import android.util.Size
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.mediapipe.components.CameraHelper
 import com.google.mediapipe.components.CameraXPreviewHelper
@@ -19,7 +24,9 @@ import com.google.mediapipe.glutil.EglManager
 
 class MainActivity : AppCompatActivity() {
 
-    private val BINARY_GRAPH_NAME = "selfie_segmentation_gpu.binarypb"
+//    private val BINARY_GRAPH_NAME = "selfie_segmentation_gpu.binarypb"
+    // TODO test 支持更换背景
+    private val BINARY_GRAPH_NAME = "selfie_segmentation_gpu_0719.binarypb"
     private val INPUT_VIDEO_STREAM_NAME = "input_video"
     private val OUTPUT_VIDEO_STREAM_NAME = "output_video"
     private val CAMERA_FACING: CameraHelper.CameraFacing = CameraHelper.CameraFacing.FRONT
@@ -79,6 +86,17 @@ class MainActivity : AppCompatActivity() {
             OUTPUT_VIDEO_STREAM_NAME
         )
         processor.videoSurfaceOutput.setFlipY(FLIP_FRAMES_VERTICALLY)
+
+        // TODO 测试更换背景，当前存在画面变形问题，需要重新调整编译binarypb文件
+        val bitmap1 = BitmapFactory.decodeResource(resources, R.drawable.png_qiaoba)
+        val bitmap2 = createColorBitmap(768, 1280, Color.GREEN)
+        processor.setOnWillAddFrameListener {
+            processor.graph.addConsumablePacketToInputStream(
+                "background_video",
+                processor.packetCreator.createRgbImageFrame(bitmap2),
+                it
+            )
+        }
 
         PermissionHelper.checkAndRequestCameraPermissions(this)
     }
@@ -157,6 +175,19 @@ class MainActivity : AppCompatActivity() {
                 previewDisplayView.visibility = View.VISIBLE
             })
         cameraHelper!!.startCamera(this, CAMERA_FACING,  /*surfaceTexture=*/null)
+    }
+
+    /**
+     * 创建纯色Bitmap
+     */
+    private fun createColorBitmap(width: Int, height: Int, color: Int): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(x, y, color)
+            }
+        }
+        return bitmap
     }
 
 }
