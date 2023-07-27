@@ -19,7 +19,7 @@
         android:theme="@style/Theme.SelfieSegmentationDemo">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".DemoActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>

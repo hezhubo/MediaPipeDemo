@@ -1,35 +1,21 @@
 package com.hezb.mediapipe.selfiesegmentation
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.SurfaceTexture
 import android.os.Bundle
-import android.util.Log
 import android.util.Size
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.mediapipe.components.CameraHelper
 import com.google.mediapipe.components.CameraXPreviewHelper
-import com.google.mediapipe.components.ExternalTextureConverter
-import com.google.mediapipe.components.FrameProcessor
 import com.google.mediapipe.components.PermissionHelper
-import com.google.mediapipe.framework.AndroidAssetUtil
-import com.google.mediapipe.glutil.EglManager
 
 
-class MainActivity : AppCompatActivity() {
-
-//    private val BINARY_GRAPH_NAME = "selfie_segmentation_gpu.binarypb"
-    // TODO test 支持更换背景
-    private val BINARY_GRAPH_NAME = "selfie_segmentation_gpu_0719.binarypb"
-    private val INPUT_VIDEO_STREAM_NAME = "input_video"
-    private val OUTPUT_VIDEO_STREAM_NAME = "output_video"
-    private val CAMERA_FACING: CameraHelper.CameraFacing = CameraHelper.CameraFacing.FRONT
+class DemoActivity : AppCompatActivity() {
 
     // Flips the camera-preview frames vertically before sending them into FrameProcessor to be
     // processed in a MediaPipe graph, and flips the processed frames back when they are displayed.
@@ -37,11 +23,10 @@ class MainActivity : AppCompatActivity() {
     // corner, whereas MediaPipe in general assumes the image origin is at top-left.
     private val FLIP_FRAMES_VERTICALLY = true
 
-    init {
-        // Load all native libraries needed by the app.
-        System.loadLibrary("mediapipe_jni")
-        System.loadLibrary("opencv_java3")
-    }
+    private val CAMERA_FACING = CameraHelper.CameraFacing.FRONT
+
+    // Handles camera access via the {@link CameraX} Jetpack support library.
+    private var cameraHelper: CameraXPreviewHelper? = null
 
     // {@link SurfaceTexture} where the camera-preview frames can be accessed.
     private var previewFrameTexture: SurfaceTexture? = null
@@ -49,71 +34,47 @@ class MainActivity : AppCompatActivity() {
     // {@link SurfaceView} that displays the camera-preview frames processed by a MediaPipe graph.
     private lateinit var previewDisplayView: SurfaceView
 
-    // Creates and manages an {@link EGLContext}.
-    private lateinit var eglManager: EglManager
-
-    // Sends camera-preview frames into a MediaPipe graph for processing, and displays the processed
-    // frames onto a {@link Surface}.
-    private lateinit var processor: FrameProcessor
-
-    // Converts the GL_TEXTURE_EXTERNAL_OES texture from Android camera into a regular texture to be
-    // consumed by {@link FrameProcessor} and the underlying MediaPipe graph.
-    private var converter: ExternalTextureConverter? = null
-
-    // Handles camera access via the {@link CameraX} Jetpack support library.
-    private var cameraHelper: CameraXPreviewHelper? = null
+    private lateinit var mediaPipeHelper: MediaPipeHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_demo)
 
-        previewDisplayView = SurfaceView(this)
-        setupPreviewDisplayView()
+        // aar module
+//        mediaPipeHelper =
+//            MediaPipeHelper(this, "selfie_segmentation_gpu.binarypb", "input_video", "output_video")
 
-        // Initialize asset manager so that MediaPipe native libraries can access the app assets, e.g.,
-        // binary graphs.
-
-        // Initialize asset manager so that MediaPipe native libraries can access the app assets, e.g.,
-        // binary graphs.
-        AndroidAssetUtil.initializeNativeAssetManager(this)
-
-        eglManager = EglManager(null)
-        processor = FrameProcessor(
-            this,
-            eglManager.nativeContext,
-            BINARY_GRAPH_NAME,
-            INPUT_VIDEO_STREAM_NAME,
-            OUTPUT_VIDEO_STREAM_NAME
-        )
-        processor.videoSurfaceOutput.setFlipY(FLIP_FRAMES_VERTICALLY)
-
-        // TODO 测试更换背景，当前存在画面变形问题，需要重新调整编译binarypb文件
-        val bitmap1 = BitmapFactory.decodeResource(resources, R.drawable.png_qiaoba)
-        val bitmap2 = createColorBitmap(768, 1280, Color.GREEN)
-        processor.setOnWillAddFrameListener {
-            processor.graph.addConsumablePacketToInputStream(
+        // src module
+        mediaPipeHelper =
+            MediaPipeHelper(this, "selfie_segmentation_gpu_bg.binarypb", "input_video", "output_video")
+        val bgBitmap = createColorBitmap(768, 1280, Color.GREEN)
+        mediaPipeHelper.processor.setOnWillAddFrameListener {
+            mediaPipeHelper.processor.graph.addConsumablePacketToInputStream(
                 "background_video",
-                processor.packetCreator.createRgbImageFrame(bitmap2),
+                mediaPipeHelper.processor.packetCreator.createRgbImageFrame(bgBitmap),
                 it
             )
         }
+
+        mediaPipeHelper.processor.videoSurfaceOutput.setFlipY(FLIP_FRAMES_VERTICALLY)
+
+        previewDisplayView = SurfaceView(this)
+        setupPreviewDisplayView()
 
         PermissionHelper.checkAndRequestCameraPermissions(this)
     }
 
     override fun onResume() {
         super.onResume()
-        converter = ExternalTextureConverter(eglManager.context);
-        converter!!.setFlipY(FLIP_FRAMES_VERTICALLY);
-        converter!!.setConsumer(processor);
+        mediaPipeHelper.openConverter().setFlipY(FLIP_FRAMES_VERTICALLY)
         if (PermissionHelper.cameraPermissionsGranted(this)) {
-            startCamera();
+            startCamera()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        converter?.close();
+        mediaPipeHelper.closeConverter()
     }
 
     override fun onRequestPermissionsResult(
@@ -134,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             .addCallback(
                 object : SurfaceHolder.Callback {
                     override fun surfaceCreated(holder: SurfaceHolder) {
-                        processor.videoSurfaceOutput.setSurface(holder.surface)
+                        mediaPipeHelper.setProcessorOutput(holder.surface)
                     }
 
                     override fun surfaceChanged(
@@ -152,7 +113,7 @@ class MainActivity : AppCompatActivity() {
                         // Connect the converter to the camera-preview frames as its input (via
                         // previewFrameTexture), and configure the output width and height as the computed
                         // display size.
-                        converter!!.setSurfaceTextureAndAttachToGLContext(
+                        mediaPipeHelper.setSurfaceTextureAndAttachToGLContext(
                             previewFrameTexture,
                             if (FLIP_FRAMES_VERTICALLY) displaySize.height else displaySize.width,
                             if (FLIP_FRAMES_VERTICALLY) displaySize.width else displaySize.height
@@ -160,20 +121,19 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun surfaceDestroyed(holder: SurfaceHolder) {
-                        processor.videoSurfaceOutput.setSurface(null)
+                        mediaPipeHelper.setProcessorOutput(null)
                     }
                 })
     }
 
     private fun startCamera() {
         cameraHelper = CameraXPreviewHelper()
-        cameraHelper!!.setOnCameraStartedListener(
-            CameraHelper.OnCameraStartedListener { surfaceTexture: SurfaceTexture? ->
-                previewFrameTexture = surfaceTexture
-                // Make the display view visible to start showing the preview. This triggers the
-                // SurfaceHolder.Callback added to (the holder of) previewDisplayView.
-                previewDisplayView.visibility = View.VISIBLE
-            })
+        cameraHelper!!.setOnCameraStartedListener { surfaceTexture: SurfaceTexture? ->
+            previewFrameTexture = surfaceTexture
+            // Make the display view visible to start showing the preview. This triggers the
+            // SurfaceHolder.Callback added to (the holder of) previewDisplayView.
+            previewDisplayView.visibility = View.VISIBLE
+        }
         cameraHelper!!.startCamera(this, CAMERA_FACING,  /*surfaceTexture=*/null)
     }
 
