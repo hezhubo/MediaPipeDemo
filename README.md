@@ -524,7 +524,7 @@ node {
 }
 ```
 
-![main](https://github.com/hezhubo/MediaPipeDemo/blob/master/screenshot/1692891138400.jpg)
+![main](https://github.com/hezhubo/MediaPipeDemo/blob/main/screenshot/1692891138400.png)
 
 如图是<https://viz.mediapipe.dev/>页面下的graph可视化流程预览
 
