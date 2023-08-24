@@ -1,6 +1,8 @@
 # MediaPipeDemo
 Google mediapipe demo, link : https://developers.google.cn/mediapipe
 
+![mediapipe](https://developers.google.cn/static/mediapipe/images/home/hero_01_1440.png)
+
 # MediaPipe Framework编译指南
 
 > 1、基于Ubuntu 20.04.6
@@ -505,4 +507,58 @@ sudo apt-get install libegl1-mesa-dev
 
 ## 五、自定义计算单元、编译想要的Model
 
-// TODO
+从前面提到的AAR包生成过程，我们可以知道，只要重新编写`BUILD`、`.pbtxt`文件即可。
+
+### 1.pbtxt（graph的描述文件）编写说明
+
+如下例子：
+
+```
+input_stream: "input"
+output_stream: "output"
+
+node {
+  calculator: "PlaceholderCalculator"
+  input_stream: "IN:input"
+  output_stream: "OUT:output"
+}
+```
+
+![main](https://github.com/hezhubo/MediaPipeDemo/blob/master/screenshot/1692891138400.jpg)
+
+如图是<https://viz.mediapipe.dev/>页面下的graph可视化流程预览
+
+其中必须包含一个`input_stream`和`output_stream`，`node`即计算单元节点，定义了所使用的计算单元以及输入输出数据
+
+### 2.编译calculators、graph的BUILD文件编写说明
+
+```
+# 固定添加内容
+load(
+    "//mediapipe/framework/tool:mediapipe_graph.bzl",
+    "mediapipe_binary_graph",
+)
+
+licenses(["notice"])
+
+package(default_visibility = ["//visibility:public"])
+
+# 所需计算单元
+cc_library(
+    name = "my_test_calculators",
+    deps = [
+        "//mediapipe/xxxx:xxxxx", # PlaceholderCalculator计算单元所在的路径
+    ],
+)
+
+mediapipe_binary_graph(
+    name = "my_test_binary_graph",
+    graph = "my_test_graph.pbtxt", # pbtxt文件名
+    output_name = "my_test.binarypb", # 编译输出的graph二进制文件的文件名
+    deps = [":my_test_calculators"], # 上面定义的计算单元合集名称
+)
+```
+
+通过文件内容可以知道，我们只需要按照前面创建编写的`.pbtxt`文件所有节点对应的计算单元添加到`cc_library`的`deps`数组中即可。
+
+编写完后就按照前面的步骤进行编译就能得到想要的Model功能

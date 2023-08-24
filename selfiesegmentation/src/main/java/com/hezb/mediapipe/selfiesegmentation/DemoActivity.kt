@@ -47,7 +47,7 @@ class DemoActivity : AppCompatActivity() {
         // src module
         mediaPipeHelper =
             MediaPipeHelper(this, "selfie_segmentation_gpu_bg.binarypb", "input_video", "output_video")
-        val bgBitmap = createColorBitmap(768, 1280, Color.GREEN)
+        val bgBitmap = createColorBitmap(768, 1280, Color.WHITE)
         mediaPipeHelper.processor.setOnWillAddFrameListener {
             mediaPipeHelper.processor.graph.addConsumablePacketToInputStream(
                 "background_video",
